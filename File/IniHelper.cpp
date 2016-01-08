@@ -13,10 +13,9 @@ CINIFile::~CINIFile()
 
 std::wstring CINIFile::GetString( std::wstring strSection,std::wstring strKey )
 {
-    std::wstring strValue;
-    strValue.resize(MAX_PATH);
-    GetPrivateProfileString(strSection.data(),strKey.data(),_T(""),(wchar_t*)strValue.data(),MAX_PATH,m_strFilePath.data());
-    return strValue;
+	wchar_t strValue[MAX_PATH];
+    GetPrivateProfileString(strSection.data(),strKey.data(),_T(""),(wchar_t*)strValue,MAX_PATH,m_strFilePath.data());
+	return std::wstring(strValue);
 }
 
 int CINIFile::GetInt( std::wstring strSection,std::wstring strKey )

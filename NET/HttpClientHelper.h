@@ -37,13 +37,22 @@ public:
 	bool Get(std::string requestObj = "", const HeadItems* headItems = NULL, const char* data = NULL, int len = 0);
 	bool Head(std::string requestOb = "");
 
-	
+	bool Post(std::string requestObj, HttpClientRepond* repond , const HeadItems* headItems = NULL, const char* data = NULL, int len = 0);
 	bool Get(std::string requestObj, HttpClientRepond* repond , const HeadItems* headItems = NULL, const char* data = NULL, int len = 0);
 
 	//获取跳转url,因为wininet是默认自动跳转，有时候我们需要跳转的URL地址，分析一些东西出来
 	std::string GetLocationUrl();
 
 	std::string GetRequestObj();
+
+	//用url是host
+	//tip:不能设置在htt heads里面设置，必须要设置flag，不能用系统的COOKIE
+	bool SetCookie(const std::string& cookie );
+
+	std::string GetCookie(const std::string& cookieName);
+
+	//返回状态码
+	int GetResultCode();
 
 private:
 	bool Action(std::string type,std::string requestObj, HttpClientRepond* repond , const HeadItems* headItems = NULL, const char* data = NULL, int len = 0);
@@ -61,6 +70,7 @@ public:
 		void SetBody(const ByteArray& body);
 
 		void GetBody(ByteArray& body);
+		void GetBody(std::string& body);
 		int  GetStatuCode() {return m_statuCode;}
 
 		std::string GetHeadItem(std::string name);
@@ -88,6 +98,9 @@ private:
 
 	//获取请求行
 	std::string GetRequestLine(const std::string& head);
+
+	//获取域名
+	std::string GetHostDomain();
 
 private:
 	void ParseHead(const std::string& head, HeadItems& heads);

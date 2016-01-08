@@ -31,7 +31,7 @@ void Trim(std::string& str)
 	TrimRight(str);
 }
 
-HttpClientHelper::HttpClientHelper( std::string host, int port ):m_agent("WinInetGet/0.1")
+HttpClientHelper::HttpClientHelper( std::string host, int port ):m_agent("Mozilla/5.0 (MSIE 9.0; qdesk 2.4.1266.203; Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko")
 {
 	m_host = host;
 	m_port = port;
@@ -51,6 +51,11 @@ HttpClientHelper::~HttpClientHelper()
 bool HttpClientHelper::Post( std::string requestObj, const HttpClientHelper::HeadItems* headItems /*= NULL*/, const char* data /*= NULL*/, int len /*= 0*/ )
 {
 	return Action("POST", requestObj, NULL , headItems, data, len);
+}
+
+bool HttpClientHelper::Post( std::string requestObj, HttpClientRepond* repond , const HeadItems* headItems /*= NULL*/, const char* data /*= NULL*/, int len /*= 0*/ )
+{
+	return Action("POST", requestObj, repond, headItems, data, len);
 }
 
 bool HttpClientHelper::Get( std::string requestObj,const HttpClientHelper::HeadItems* HeadItems /*= NULL*/, const char* data /*= NULL*/, int len /*= 0*/ )
@@ -75,13 +80,14 @@ bool HttpClientHelper::Action( std::string type,std::string requestObj, HttpClie
 
 	if(Connect())
 	{
-		int flag = INTERNET_FLAG_RELOAD ;
+		//int flag = INTERNET_FLAG_RELOAD ;
+		int flag = 0;
 		if(m_port == 443)	flag |= INTERNET_FLAG_SECURE;
 		m_hSession = HttpOpenRequestA(m_hInternetConnect, type.data() ,  requestObj.data(), NULL, NULL, NULL, flag, NULL);
 		if(m_hSession)
 		{
-
 			std::string heads = GetHeardItems(headItems);
+
 			//分析一下连接个数
 			//正真开始连接
 			//这里TCP 连接过去，一直等待TCP 返回整个响应包，然后才返回。
@@ -100,9 +106,20 @@ bool HttpClientHelper::Action( std::string type,std::string requestObj, HttpClie
 					repond->SetBody(data);
 				}
 
-				bRet = true;
+				int nResultCode = GetResultCode();
+				if( nResultCode >= 200 && nResultCode <= 400)
+				{
+					bRet = true;
+				}
+				else
+				{
+					bRet = false;
+				}
 			}
-
+			else
+			{
+				bRet = false;
+			}
 		}
 
 		//删除一些请求,不能直接关闭，很多信息可以在这对象里面拿到，如果用户
@@ -364,6 +381,62 @@ std::string HttpClientHelper::GetRequestLine( const std::string& head )
 	return str;
 }
 
+bool HttpClientHelper::SetCookie( const std::string& cookie )
+{
+	//一定要设置PATH和DOMAIN不然会设置失败
+	//InternetSetCookieA("http://.bing.com",NULL,"CODE=123; PATH=/; DOMAIN=bing.com");
+	std::string domain = GetHostDomain();
+	std::string url = "http://";
+	url += domain;
+	std::string fullCookie = cookie;
+	std::string urlCookieFlag = "; PATH=/; DOMAIN=";
+	urlCookieFlag += domain;
+	fullCookie += urlCookieFlag;
+	//cookie += urlCookieFlag;
+	BOOL bVal = InternetSetCookieA(url.data(),NULL,fullCookie.data());
+	return bVal ? true : false;
+}
+
+std::string HttpClientHelper::GetCookie( const std::string& cookieName )
+{
+	std::string strOut;
+	DWORD num = 0;
+	InternetGetCookieA(m_host.data(),cookieName.data(),NULL,&num);
+	if(num)
+	{
+		strOut.resize(num);
+		InternetGetCookieA((char*)m_host.data(),(char*)cookieName.data(),(char*)strOut.data(),&num);
+	}
+
+	return strOut;
+}
+
+std::string HttpClientHelper::GetHostDomain()
+{
+	std::string strOut;
+	int nPos = m_host.find(".");;
+	if(nPos != -1)
+	{
+		strOut = m_host.substr(nPos);
+	}
+
+	return strOut;
+}
+
+int HttpClientHelper::GetResultCode()
+{
+	int resultCode = 0;
+	char buf[10] = {0};
+	DWORD nIndex = 0;
+	DWORD dwSize = 10;
+	if(NULL != m_hSession)
+	{
+		HttpQueryInfoA(m_hSession, HTTP_QUERY_STATUS_CODE, buf, &dwSize, &nIndex);
+		resultCode = atoi(buf);
+	}
+	return resultCode;
+}
+
 
 void HttpClientHelper::HttpClientRepond::SetHeads(const HttpClientHelper::HeadItems& heads )
 {
@@ -379,6 +452,11 @@ void HttpClientHelper::HttpClientRepond::SetBody( const ByteArray& body)
 void HttpClientHelper::HttpClientRepond::GetBody( ByteArray& body )
 {
 	body = m_bodys;
+}
+
+void HttpClientHelper::HttpClientRepond::GetBody(std::string& body)
+{
+	body.assign(&(*m_bodys.begin()),m_bodys.size());
 }
 
 void HttpClientHelper::HttpClientRepond::SetStatuCode( int code )
