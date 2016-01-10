@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "HttpClientHelper.h"
 
+#pragma comment(lib,"Wininet.lib")
 
 void TrimLeft(std::string& str)
 {
